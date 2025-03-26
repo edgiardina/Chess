@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Chess.MainPage">
+
+
+    <!-- A root layout to position the container. 
+         Use Center alignment to keep the square board centered nicely. -->
+    <Grid x:Name="RootLayout">
+        <ContentView x:Name="ChessBoardContainer"
+                     VerticalOptions="Center"
+                     HorizontalOptions="Center">
+            <!-- We'll fill this Grid dynamically in code-behind. -->
+            <Grid x:Name="ChessBoard" />
+        </ContentView>
+    </Grid>
+
+</ContentPage>
