@@ -4,6 +4,7 @@ namespace Chess
     public partial class MainPage : ContentPage
     {
         private ChessBoard _game;  // or ChessGame, if the library calls it that
+        private Position selectedPosition = new Position();
 
         public MainPage()
         {
@@ -70,13 +71,9 @@ namespace Chess
                             HorizontalTextAlignment = TextAlignment.Center,
                             VerticalTextAlignment = TextAlignment.Center,
                             TextColor = pieceAtPosition.Color == PieceColor.White ? Colors.White : Colors.Black
-
                         };
 
-                        //// Optional: Add tap gesture
-                        //var tapGesture = new TapGestureRecognizer();
-                        //tapGesture.Tapped += OnPieceTapped;
-                        //pieceLabel.GestureRecognizers.Add(tapGesture);
+                        pieceLabel.GestureRecognizers.Add(tapGesture);
 
                         ChessBoard.Add(pieceLabel, col, row);
                     }
@@ -87,20 +84,85 @@ namespace Chess
 
         private void OnSquareTapped(object sender, EventArgs e)
         {
-            // This is if you want to handle "square-only" tapping
-            var tappedBox = (BoxView)sender;
-            int row = Grid.GetRow(tappedBox);
-            int col = Grid.GetColumn(tappedBox);
-            // Possibly handle selecting a piece or making a move
-        }
+            int row, col;
+            BoxView tappedBox = null;
 
-        private void OnPieceTapped(object sender, EventArgs e)
-        {
-            // This is if you want direct piece-tapping logic
-            var tappedImage = (Image)sender;
-            int row = Grid.GetRow(tappedImage);
-            int col = Grid.GetColumn(tappedImage);
-            // Then pass to your library’s Move or selection logic
+            // if we tapped a label, we tapped on a "piece"
+            if (sender is Label label)
+            {
+                row = Grid.GetRow(label);
+                col = Grid.GetColumn(label);
+
+                tappedBox = ChessBoard.Children
+                                        .OfType<BoxView>() 
+                                        .FirstOrDefault(view =>
+                                            Grid.GetRow(view) == row &&
+                                            Grid.GetColumn(view) == col);
+            }
+            else // we tapped on an empty square
+            {
+                // This is if you want to handle "square-only" tapping
+                tappedBox = (BoxView)sender;
+                row = Grid.GetRow(tappedBox);
+                col = Grid.GetColumn(tappedBox);
+                // Possibly handle selecting a piece or making a move
+            }
+
+            var positionPressed = new Position((short)col, (short)(7 - row));
+
+            if (selectedPosition.HasValue)
+            {
+                // if you pressed the same piece again, unselect it
+                if (selectedPosition == positionPressed)
+                {
+                    selectedPosition = new Position();
+                    BuildChessBoardUI();
+                    return;
+                }
+
+                // if is valid move
+                var isValidMove = _game.IsValidMove(new Move(selectedPosition, positionPressed));
+
+                if (isValidMove)
+                {
+                    // move the piece
+                    _game.Move(new Move(selectedPosition, positionPressed));
+
+                    // update the UI
+                    BuildChessBoardUI();
+
+                    // a new position is always HasValue false (-1, -1)
+                    selectedPosition = new Position();
+                }
+                else
+                {
+                    // show a dialog because it's an invalid move
+                    DisplayAlert("Invalid Move", "Invalid move, try again", "OK");
+                }
+            }
+            else
+            {
+                // if there's a piece at this square
+                var pieceAtPosition = _game[positionPressed];
+
+                if (pieceAtPosition != null)
+                {
+                    // and the piece is the right color (it's your turn)
+                    if (pieceAtPosition.Color == _game.Turn)
+                    {
+                        selectedPosition = positionPressed;
+
+                        // highlight the selected square
+                        tappedBox.BackgroundColor = Colors.Yellow;
+                    }
+                    // else show a dialog because its not your turn
+                    else
+                    {
+                        DisplayAlert("Invalid Move", $"It's not your turn, it's {_game.Turn}'s turn", "OK");
+                    }
+                }
+            }
+
         }
 
         private static readonly Dictionary<object, string> WhiteSymbols = new()
@@ -141,9 +203,5 @@ namespace Chess
             ChessBoardContainer.WidthRequest = size;
             ChessBoardContainer.HeightRequest = size;
         }
-
-
-
     }
-
 }
