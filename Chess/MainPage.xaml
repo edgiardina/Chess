@@ -6,13 +6,15 @@
 
     <!-- A root layout to position the container. 
          Use Center alignment to keep the square board centered nicely. -->
-    <Grid x:Name="RootLayout">
+    <StackLayout x:Name="RootLayout">
         <ContentView x:Name="ChessBoardContainer"
                      VerticalOptions="Center"
                      HorizontalOptions="Center">
             <!-- We'll fill this Grid dynamically in code-behind. -->
             <Grid x:Name="ChessBoard" />
         </ContentView>
-    </Grid>
+        <Label x:Name="TurnLabel" />
+        <Label x:Name="MovesLabel" VerticalOptions="EndAndExpand" />
+    </StackLayout>
 
 </ContentPage>

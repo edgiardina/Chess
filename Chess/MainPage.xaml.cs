@@ -67,7 +67,7 @@ namespace Chess
                         var pieceLabel = new Label
                         {
                             Text = MapPieceToSymbol(pieceAtPosition),
-                            FontSize = 32, // or whatever size looks good
+                            FontSize = 48, // or whatever size looks good
                             HorizontalTextAlignment = TextAlignment.Center,
                             VerticalTextAlignment = TextAlignment.Center,
                             TextColor = pieceAtPosition.Color == PieceColor.White ? Colors.White : Colors.Black
@@ -80,9 +80,13 @@ namespace Chess
                 }
             }
 
+            TurnLabel.Text = $"Turn: {_game.Turn}";
+            // split executed moves by newline
+            MovesLabel.Text = $"Moves: \n{string.Join(Environment.NewLine, _game.ExecutedMoves)}";
+
         }
 
-        private void OnSquareTapped(object sender, EventArgs e)
+        private async void OnSquareTapped(object sender, EventArgs e)
         {
             int row, col;
             BoxView tappedBox = null;
@@ -94,7 +98,7 @@ namespace Chess
                 col = Grid.GetColumn(label);
 
                 tappedBox = ChessBoard.Children
-                                        .OfType<BoxView>() 
+                                        .OfType<BoxView>()
                                         .FirstOrDefault(view =>
                                             Grid.GetRow(view) == row &&
                                             Grid.GetColumn(view) == col);
@@ -133,11 +137,20 @@ namespace Chess
 
                     // a new position is always HasValue false (-1, -1)
                     selectedPosition = new Position();
+
+                    // check if Checkmate happened
+                    if (_game.IsEndGame)
+                    {
+                        // show a dialog because it's an invalid move
+                        await DisplayAlert("Game Over", $"{_game.EndGame.WonSide} wins!", "OK");
+                        _game.Clear();
+                        BuildChessBoardUI();
+                    }
                 }
                 else
                 {
                     // show a dialog because it's an invalid move
-                    DisplayAlert("Invalid Move", "Invalid move, try again", "OK");
+                    await DisplayAlert("Invalid Move", "Invalid move, try again", "OK");
                 }
             }
             else
@@ -153,29 +166,18 @@ namespace Chess
                         selectedPosition = positionPressed;
 
                         // highlight the selected square
-                        tappedBox.BackgroundColor = Colors.Yellow;
+                        tappedBox.Color = Colors.Yellow;
                     }
                     // else show a dialog because its not your turn
                     else
                     {
-                        DisplayAlert("Invalid Move", $"It's not your turn, it's {_game.Turn}'s turn", "OK");
+                        await DisplayAlert("Invalid Move", $"It's not your turn, it's {_game.Turn}'s turn", "OK");
                     }
                 }
             }
-
         }
 
-        private static readonly Dictionary<object, string> WhiteSymbols = new()
-        {
-            { PieceType.Pawn,   "♙" },
-            { PieceType.Rook,   "♖" },
-            { PieceType.Knight, "♘" },
-            { PieceType.Bishop, "♗" },
-            { PieceType.Queen,  "♕" },
-            { PieceType.King,   "♔" },
-        };
-
-        private static readonly Dictionary<object, string> BlackSymbols = new()
+        private static readonly Dictionary<object, string> Symbols = new()
         {
             { PieceType.Pawn,   "♟" },
             { PieceType.Rook,   "♜" },
@@ -187,12 +189,8 @@ namespace Chess
 
         private string MapPieceToSymbol(Piece piece)
         {
-            if (piece.Color == PieceColor.White)
-                return WhiteSymbols.TryGetValue(piece.Type, out var symW) ? symW : "?";
-            else
-                return BlackSymbols.TryGetValue(piece.Type, out var symB) ? symB : "?";
+            return Symbols.TryGetValue(piece.Type, out var symB) ? symB : "?";
         }
-
 
         protected override void OnSizeAllocated(double width, double height)
         {
