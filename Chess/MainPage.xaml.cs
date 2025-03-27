@@ -143,7 +143,7 @@ namespace Chess
                     BuildChessBoardUI();
 
                     // remove tappedBox highlight
-                    ResetSquareColor(row, col);
+                    ResetSquareColor();
 
                     // a new position is always HasValue false (-1, -1)
                     selectedPosition = new Position();
@@ -187,7 +187,7 @@ namespace Chess
             }
         }
 
-        private void ResetSquareColor(int row, int col)
+        private void ResetSquareColor()
         {
             // Let's call it "gamePos" for the library's position
             // gamePos.Column = col
@@ -206,7 +206,7 @@ namespace Chess
 
             if (boxToUnhighlight != null)
             {
-                boxToUnhighlight.Color = DetermineSquareColor(row, col);
+                boxToUnhighlight.Color = DetermineSquareColor(uiRow, uiCol);
             }
         }
 
