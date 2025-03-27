@@ -6,6 +6,8 @@ namespace Chess
         private ChessBoard _game;  // or ChessGame, if the library calls it that
         private Position selectedPosition = new Position();
 
+        private bool boardDrawn = false;
+
         public MainPage()
         {
             InitializeComponent();
@@ -21,16 +23,23 @@ namespace Chess
 
         private void BuildChessBoardUI()
         {
-            // We assume you have Grid x:Name="ChessBoard" in XAML
-            ChessBoard.RowDefinitions.Clear();
-            ChessBoard.ColumnDefinitions.Clear();
-            ChessBoard.Children.Clear();
+            Console.WriteLine("Building board UI");
 
-            // Define 8 rows/cols
-            for (int i = 0; i < 8; i++)
+            // We assume you have Grid x:Name="ChessBoard" in XAML
+            // remove all pieces from the chess grid
+            ChessBoard.Children
+                .OfType<Label>()
+                .ToList()
+                .ForEach(label => ChessBoard.Children.Remove(label));
+
+            if (!boardDrawn)
             {
-                ChessBoard.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-                ChessBoard.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                // Define 8 rows/cols
+                for (int i = 0; i < 8; i++)
+                {
+                    ChessBoard.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                    ChessBoard.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                }
             }
 
             // For each square in the library’s board, draw the square color
@@ -40,21 +49,21 @@ namespace Chess
             {
                 for (int col = 0; col < 8; col++)
                 {
-                    var lightSquareColor = Color.FromArgb("#F0D9B5");
-                    var darkSquareColor = Color.FromArgb("#B58863");
-
-                    var squareColor = ((row + col) % 2 == 0)
-                                        ? lightSquareColor
-                                        : darkSquareColor;
-
-                    var squareBoxView = new BoxView { Color = squareColor };
-
-                    // Add tap handling for moves
                     var tapGesture = new TapGestureRecognizer();
-                    tapGesture.Tapped += OnSquareTapped;
-                    squareBoxView.GestureRecognizers.Add(tapGesture);
 
-                    ChessBoard.Add(squareBoxView, col, row);
+                    if (!boardDrawn)
+                    {
+                        Color squareColor = DetermineSquareColor(row, col);
+
+                        var squareBoxView = new BoxView { Color = squareColor };
+
+                        // Add tap handling for moves
+
+                        tapGesture.Tapped += OnSquareTapped;
+                        squareBoxView.GestureRecognizers.Add(tapGesture);
+
+                        ChessBoard.Add(squareBoxView, col, row);
+                    }
 
                     var pieceAtPosition = _game[col, 7 - row];
 
@@ -73,8 +82,6 @@ namespace Chess
                             TextColor = pieceAtPosition.Color == PieceColor.White ? Colors.White : Colors.Black
                         };
 
-                        pieceLabel.GestureRecognizers.Add(tapGesture);
-
                         ChessBoard.Add(pieceLabel, col, row);
                     }
                 }
@@ -84,33 +91,30 @@ namespace Chess
             // split executed moves by newline
             MovesLabel.Text = $"Moves: \n{string.Join(Environment.NewLine, _game.ExecutedMoves)}";
 
+            boardDrawn = true;
+        }
+
+        private static Color DetermineSquareColor(int row, int col)
+        {
+            var lightSquareColor = Color.FromArgb("#F0D9B5");
+            var darkSquareColor = Color.FromArgb("#B58863");
+
+            var squareColor = ((row + col) % 2 == 0)
+                                ? lightSquareColor
+                                : darkSquareColor;
+            return squareColor;
         }
 
         private async void OnSquareTapped(object sender, EventArgs e)
         {
+            Console.WriteLine("Tapped!");
+
             int row, col;
             BoxView tappedBox = null;
 
-            // if we tapped a label, we tapped on a "piece"
-            if (sender is Label label)
-            {
-                row = Grid.GetRow(label);
-                col = Grid.GetColumn(label);
-
-                tappedBox = ChessBoard.Children
-                                        .OfType<BoxView>()
-                                        .FirstOrDefault(view =>
-                                            Grid.GetRow(view) == row &&
-                                            Grid.GetColumn(view) == col);
-            }
-            else // we tapped on an empty square
-            {
-                // This is if you want to handle "square-only" tapping
-                tappedBox = (BoxView)sender;
-                row = Grid.GetRow(tappedBox);
-                col = Grid.GetColumn(tappedBox);
-                // Possibly handle selecting a piece or making a move
-            }
+            tappedBox = (BoxView)sender;
+            row = Grid.GetRow(tappedBox);
+            col = Grid.GetColumn(tappedBox);
 
             var positionPressed = new Position((short)col, (short)(7 - row));
 
@@ -121,6 +125,9 @@ namespace Chess
                 {
                     selectedPosition = new Position();
                     BuildChessBoardUI();
+
+                    // remove tappedBox highlight
+                    tappedBox.Color = DetermineSquareColor(row, col);
                     return;
                 }
 
@@ -134,6 +141,9 @@ namespace Chess
 
                     // update the UI
                     BuildChessBoardUI();
+
+                    // remove tappedBox highlight
+                    ResetSquareColor(row, col);
 
                     // a new position is always HasValue false (-1, -1)
                     selectedPosition = new Position();
@@ -174,6 +184,29 @@ namespace Chess
                         await DisplayAlert("Invalid Move", $"It's not your turn, it's {_game.Turn}'s turn", "OK");
                     }
                 }
+            }
+        }
+
+        private void ResetSquareColor(int row, int col)
+        {
+            // Let's call it "gamePos" for the library's position
+            // gamePos.Column = col
+            // gamePos.Row    = 7 - row
+
+            var uiCol = selectedPosition.X;
+            // We invert the row back:
+            var uiRow = 7 - selectedPosition.Y;
+
+            // Among all children in the grid, pick out the BoxView in row/col
+            var boxToUnhighlight = ChessBoard.Children
+                .OfType<BoxView>()
+                .FirstOrDefault(b =>
+                    Grid.GetRow(b) == uiRow &&
+                    Grid.GetColumn(b) == uiCol);
+
+            if (boxToUnhighlight != null)
+            {
+                boxToUnhighlight.Color = DetermineSquareColor(row, col);
             }
         }
 
