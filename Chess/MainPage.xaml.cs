@@ -1,10 +1,13 @@
 ﻿
+using Chess.Stockfish;
+
 namespace Chess
 {
     public partial class MainPage : ContentPage
     {
-        private ChessBoard _game;  // or ChessGame, if the library calls it that
+        private ChessBoard _game;
         private Position selectedPosition = new Position();
+        private readonly StockfishClient stockfishClient = new StockfishClient();
 
         private bool boardDrawn = false;
 
@@ -12,12 +15,9 @@ namespace Chess
         {
             InitializeComponent();
 
-            // 1) Create the game
-            _game = new ChessBoard();
-            // 2) Load the start position or FEN, etc.
+            // 1) Create the game state object 
+            _game = new ChessBoard();            
 
-
-            // 3) Build your 8x8 board UI, using the library’s Board info
             BuildChessBoardUI();
         }
 
@@ -155,6 +155,10 @@ namespace Chess
                         await DisplayAlert("Game Over", $"{_game.EndGame.WonSide} wins!", "OK");
                         _game.Clear();
                         BuildChessBoardUI();
+                    } 
+                    else
+                    {
+                        await ComputerPlayerTurn();
                     }
                 }
                 else
@@ -162,6 +166,7 @@ namespace Chess
                     // show a dialog because it's an invalid move
                     await DisplayAlert("Invalid Move", "Invalid move, try again", "OK");
                 }
+
             }
             else
             {
@@ -185,6 +190,23 @@ namespace Chess
                     }
                 }
             }
+        }
+
+        private async Task ComputerPlayerTurn()
+        {
+            var bestMoveGivenGameState = await stockfishClient.GetBestMoveAsync(_game.ToFen(), 12);
+
+            var bestMove = bestMoveGivenGameState.ParsedBestMove.Move;
+
+            var from = bestMove.Substring(0, 2); // "g8"
+            var to = bestMove.Substring(2, 2); // "f6"
+
+            var move = new Move(from, to);
+
+            _game.Move(move);
+
+            // update the UI
+            BuildChessBoardUI();
         }
 
         private void ResetSquareColor()
