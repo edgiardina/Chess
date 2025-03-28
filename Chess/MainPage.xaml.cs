@@ -16,7 +16,7 @@ namespace Chess
             InitializeComponent();
 
             // 1) Create the game state object 
-            _game = new ChessBoard();            
+            _game = new ChessBoard();
 
             BuildChessBoardUI();
         }
@@ -25,7 +25,6 @@ namespace Chess
         {
             Console.WriteLine("Building board UI");
 
-            // We assume you have Grid x:Name="ChessBoard" in XAML
             // remove all pieces from the chess grid
             ChessBoard.Children
                 .OfType<Label>()
@@ -44,7 +43,6 @@ namespace Chess
 
             // For each square in the library’s board, draw the square color
             // Then, if there's a piece on that square, display it.
-            // The library might have something like _game.Board[x, y] or getPiece(row,col).
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
@@ -65,14 +63,11 @@ namespace Chess
                         ChessBoard.Add(squareBoxView, col, row);
                     }
 
+                    // Draw a piece on the board if there is supposed to be one at this position
                     var pieceAtPosition = _game[col, 7 - row];
 
                     if (pieceAtPosition != null)
                     {
-
-                        // Now see if there's a piece at [row, col]
-                        // The library’s code might differ. Often it’s row-first or col-first.
-                        // Check the docs or source for how to retrieve a piece. Example:
                         var pieceLabel = new Label
                         {
                             Text = MapPieceToSymbol(pieceAtPosition),
@@ -149,16 +144,15 @@ namespace Chess
                     selectedPosition = new Position();
 
                     // check if Checkmate happened
-                    if (_game.IsEndGame)
+                    await EndGameOnWinState();
+
+                    if (_game.Turn == PieceColor.Black)
                     {
-                        // show a dialog because it's an invalid move
-                        await DisplayAlert("Game Over", $"{_game.EndGame.WonSide} wins!", "OK");
-                        _game.Clear();
-                        BuildChessBoardUI();
-                    } 
-                    else
-                    {
+                        // Computer player always controls black.
+                        // if this call silently fails, user can still move black piece manually
                         await ComputerPlayerTurn();
+
+                        await EndGameOnWinState();
                     }
                 }
                 else
@@ -166,7 +160,6 @@ namespace Chess
                     // show a dialog because it's an invalid move
                     await DisplayAlert("Invalid Move", "Invalid move, try again", "OK");
                 }
-
             }
             else
             {
@@ -192,21 +185,39 @@ namespace Chess
             }
         }
 
+        private async Task EndGameOnWinState()
+        {
+            if (_game.IsEndGame)
+            {
+                await DisplayAlert("Game Over", $"{_game.EndGame.WonSide} wins!", "OK");
+                _game.Clear();
+                BuildChessBoardUI();
+                selectedPosition = new Position();
+            }
+        }
+
         private async Task ComputerPlayerTurn()
         {
-            var bestMoveGivenGameState = await stockfishClient.GetBestMoveAsync(_game.ToFen(), 12);
+            try
+            {
+                var bestMoveGivenGameState = await stockfishClient.GetBestMoveAsync(_game.ToFen(), 12);
 
-            var bestMove = bestMoveGivenGameState.ParsedBestMove.Move;
+                var bestMove = bestMoveGivenGameState.ParsedBestMove.Move;
 
-            var from = bestMove.Substring(0, 2); // "g8"
-            var to = bestMove.Substring(2, 2); // "f6"
+                var from = bestMove.Substring(0, 2); // "g8"
+                var to = bestMove.Substring(2, 2); // "f6"
 
-            var move = new Move(from, to);
+                var move = new Move(from, to);
 
-            _game.Move(move);
+                _game.Move(move);
 
-            // update the UI
-            BuildChessBoardUI();
+                // update the UI
+                BuildChessBoardUI();
+            }
+            catch (Exception ex)
+            {
+                DisplayAlert("Sorry, I couldn't get the next move from Stockfish", ex.Message, "OK");
+            }
         }
 
         private void ResetSquareColor()
@@ -255,6 +266,14 @@ namespace Chess
             double size = Math.Min(width, height);
             ChessBoardContainer.WidthRequest = size;
             ChessBoardContainer.HeightRequest = size;
+        }
+
+        private void ResetButton_Clicked(object sender, EventArgs e)
+        {
+            _game.Clear();
+            ResetSquareColor();
+            BuildChessBoardUI();
+            selectedPosition = new Position();
         }
     }
 }

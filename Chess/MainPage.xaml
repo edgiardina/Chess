@@ -13,8 +13,11 @@
             <!-- We'll fill this Grid dynamically in code-behind. -->
             <Grid x:Name="ChessBoard" />
         </ContentView>
+        <Button x:Name="ResetButton"
+                Text="Reset"
+                Clicked="ResetButton_Clicked" />
         <Label x:Name="TurnLabel" />
-        <Label x:Name="MovesLabel" VerticalOptions="EndAndExpand" />
+        <Label x:Name="MovesLabel" VerticalOptions="EndAndExpand" />        
     </StackLayout>
 
 </ContentPage>
